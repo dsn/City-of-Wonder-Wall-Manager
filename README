@@ -3,20 +3,25 @@ Current Version: 0.6 ALPHA
 
 This script is still in development. Please check back for updates and bug fixes.
 
-Note: I am not a JavaScript Developer, this was more a fun project to introduce myself to it a little more and understand the threading models etc. There are probably lot better ways to accomplish what I have done and any constructive feedback is welcome.
+Note: I am not a JavaScript Developer, this was more a fun project to introduce myself to it a little more and understand the threading models etc. 
+There are probably lot better ways to accomplish what I have done and any constructive feedback is welcome.
+
 Introduction
 
-So if you have played City of Wonder for more than 10 min you realize how chatty this game is. It really likes to post stuff up to share with your friends for almost everything you do. These posts can get a bit overwhelming to deal with when you have a lot allies and friends playing the game.
+So if you have played City of Wonder for more than 10 min you realize how chatty this game is. 
+It really likes to post stuff up to share with your friends for almost everything you do. These posts can get a bit overwhelming to deal with when you have a lot allies and friends playing the game.
 
 Running City of Wonder Wall Manager
 
 Open your browser to http://www.facebook.com/
 
-In the bottom left hand corner you will see a small black box, this is the City of Wonder Wall Manager "Control Panel". Here you can see its current status, scan for new posts, or configure the script.
+In the bottom left hand corner you will see a small black box, this is the City of Wonder Wall Manager "Control Panel". 
+Here you can see its current status, scan for new posts, or configure the script.
 
 Scanning Posts
 
-Right now this is a manual process, to run a scan and collect bonuses and assist building marvels click the Scan Now link in the control panel. Clicking this link will scan all currently visible posts for City of Wonder Bonus or Marvel Assistance Posts and take appropriate action for each.
+Right now this is a manual process, to run a scan and collect bonuses and assist building marvels click the Scan Now link in the control panel. 
+Clicking this link will scan all currently visible posts for City of Wonder Bonus or Marvel Assistance Posts and take appropriate action for each.
 
 Bonuses Collected and Marvels Assisted will be skipped next run.
 
@@ -34,7 +39,8 @@ You should notice a small window open in the middle of your screen. Here you can
 
 * Auto Expand More Posts
 
-When you have multiple posts from a single user or application on your page Facebook will sometimes put up a like that says 'See X more Posts from Y'. The Cow Wall Manager can automatically click that link expanding to show more posts.
+When you have multiple posts from a single user or application on your page Facebook will sometimes put up a like that says 'See X more Posts from Y'. 
+The Cow Wall Manager can automatically click that link expanding to show more posts.
 
 * Like Marvels Assisted Building
 
@@ -56,7 +62,10 @@ Notify users when a new version is available and offer the ability to upgrade
 
 * Validate Collected Bonuses and Marvel's Assisted Building
 
-My fear is this will drastically slow down performance but would allow for accurate reporting and status updates. There appears to be a limit of how many of each type of bonus you can collect a day. With this feature we could save some bonuses for the next day if the limit is reached. Still researching full information on bonus collection cool downs. There is also rumor of a Marvel assistance daily cap as well. Still collecting data to verify.
+My fear is this will drastically slow down performance but would allow for accurate reporting and status updates. 
+There appears to be a limit of how many of each type of bonus you can collect a day. 
+With this feature we could save some bonuses for the next day if the limit is reached. Still researching full information on bonus collection cool downs. 
+There is also rumor of a Marvel assistance daily cap as well. Still collecting data to verify.
 
 Changelog
 0.6 Alpha
