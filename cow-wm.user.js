@@ -23,17 +23,20 @@
 // @namespace     cowwm
 // @description   Collect Bonuses and Assist Build Marvels for the Facebook game City of Wonder
 // @include       http://www.facebook.com/*
-// @include       http://www.facebook.com/home.php?filter=app_114335335255741*
-// @include       http://socialciv-fb-web-active-vip.playdom.com/socialciv/fb/newsfeed/*
-// @exclude		  http://www.facebook.com/*.php
+// @include       http://www.facebook.com/home.php*
+// @exclude       http://www.facebook.com/a*.php*
+// @exclude       http://www.facebook.com/ajax/*
 // @exclude       http://www.facebook.com/facebook*
 // @exclude       http://www.facebook.com/careers*
 // @exclude       http://www.facebook.com/help*
+// @exclude		  http://www.facebook.com/*profile*
+// @exclude		  http://www.facebook.com/terms*
 // ==/UserScript==
 // CHANGELOG
 // 0.8B
 // Lots of Code Refactoring based on new Landing Pages for Marvels and Bonuses
 // New Accuriate Reporting based on parsed output of collected values
+// Updated Include / Exclude List
 // 0.7A
 // Hide Posts Already Processed Option
 // Reset User DB Option
@@ -102,6 +105,7 @@ var wonder =
                 if (loaded >= 5)
                 {
                     wonder.utils.logger("Error Loading - Tried 5x and gave up", "warn");
+					console.log("Fuck it not loading");
                     while (document.getElementById("cowwm-cpanel") != null && document.getElementById("cowwm-cpanel") != undefined)
                     {
                         var cpanel = document.getElementById("cowwm-cpanel");
@@ -112,7 +116,8 @@ var wonder =
                 setTimeout(function ()
                 {
                     wonder.core.init()
-                }, 3000);
+                }, 1000);
+				return false;
             }
             wonder.utils.logger("Initializing City of Wonder Wall Manager", "info");
             desc = "<div id='cowwm-totals'><h4 id='cowwm-totals-title'>Total Collection Summary</h4><b>Marvels Assisted:</b>&nbsp;<span id='cowwm-totals-marvels'></span><br/><b>Bonuses Collected:</b>&nbsp;<span id='cowwm-totals-bonus'></span><br/><b title='Estimated Silver Collected'>Silver Gained:</b>&nbsp;<span id='cowwm-totals-silver'></span></div><br/><div id='cowwm-summary'><br/></div>" + "<img src='http://photos-b.ak.fbcdn.net/photos-ak-ash1/v27562/61/114335335255741/app_2_114335335255741_9738.gif' id='cowwm-logo' title='Click to open or close Options'/>" + indent + "<span id='cowwm-panel-name' title='Click to open Options'>[CoW Scanner]</span>" + indent + "<a href='javascript:void(0);' id='collectBtn'>Scan Now</a>" + indent + "<span id='cowwm-status'>Loading (Waiting for Facebook to Finish Loading)</span>";
@@ -563,10 +568,14 @@ var wonder =
                     {
                         var remoteVer = response.responseText.match(/version = \"([0-9]\.[0-9] [A-Za-z]+)/)[1].replace(/Alpha|Beta|Release/, "");
                         //var remoteVer = 0.9;
-                        wonder.utils.logger("Running Version: " + version.replace(/Alpha|Beta|Release/, "") + " Remote Version: " + remoteVer, "debug");
+                        //wonder.utils.logger("Running Version: " + version.replace(/Alpha|Beta|Release/, "") + " Remote Version: " + remoteVer, "debug");
                         if (remoteVer > version.replace(/Alpha|Beta|Release/, ""))
                         {
-                            wonder.utils.logger("New Version Detected: " + remoteVer, "info")
+                            console.info("New Version Detected: " + remoteVer)
+							var res = confirm("A New Version of the City of Wonder Wall Manager is Available\r\nWould you like to upgrade?");
+							if(res === true) {
+								location.href = "http://github.com/dsn/City-of-Wonder-Wall-Manager/raw/master/cow-wm.user.js";
+							}
                         }
                         else
                         {
