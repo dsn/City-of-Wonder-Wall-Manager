@@ -1,5 +1,5 @@
 // City of Wonder Wall Scanner
-// version 0.7 ALPHA!
+// version 0.8 Beta!
 // 2010-08-27
 // Copyright (c) 2010, Dark Side Networks
 // Released under the GPL license
@@ -31,6 +31,9 @@
 // @exclude       http://www.facebook.com/help*
 // ==/UserScript==
 // CHANGELOG
+// 0.8B
+// Lots of Code Refactoring based on new Landing Pages for Marvels and Bonuses
+// New Accuriate Reporting based on parsed output of collected values
 // 0.7A
 // Hide Posts Already Processed Option
 // Reset User DB Option
@@ -47,9 +50,9 @@
 // Enable Multiple User Support
 // Options Enabled
 // Script Settings
-var version = "0.7 Alpha";
-var debug = true; // Set to false to disable logging
-var logLevel = "debug"; // set to debug, info, warn, or error to filter events
+var version = "0.8 Beta";
+var debug = false; // Set to false to disable logging
+var logLevel = "info"; // set to debug, info, warn, or error to filter events
 //var upgradeInterval = 21600000; // Check for new version on load every 6 hrs
 var upgradeInterval = 120000; // Debug 2 min
 // Script Variables
@@ -59,9 +62,11 @@ var bonusRegex = "Pick Up Silver|Collect Silver|Collect Bonus";
 var marvelRegex = "Help to Collect Bonus";
 var legengRegex = "Send Legend to help";
 var townRegex = "Visit your city"
+var loaded = 0;
 // Aliases
 var newLine = "<br>&nbsp;&nbsp;";
 var indent = "&nbsp;&nbsp;";
+
 function $()
 {
     if (arguments.length == 1)
@@ -76,23 +81,6 @@ function $()
         result.push(el);
     }
     return result;
-}
-function getDOC(url, callback)
-{
-    GM_xmlhttpRequest(
-    {
-        method: 'GET',
-        url: url,
-        onload: function (responseDetails)
-        {
-            var dt = document.implementation.createDocumentType("html", "-//W3C//DTD HTML 4.01 Transitional//EN", "http://www.w3.org/TR/html4/loose.dtd"),
-                doc = document.implementation.createDocument('', '', dt),
-                html = doc.createElement('html');
-            html.innerHTML = responseDetails.responseText;
-            doc.appendChild(html);
-            callback(doc, url);
-        }
-    });
 }
 var wonder =
 {
@@ -110,6 +98,17 @@ var wonder =
             }
             catch (e)
             {
+                loaded++;
+                if (loaded >= 5)
+                {
+                    wonder.utils.logger("Error Loading - Tried 5x and gave up", "warn");
+                    while (document.getElementById("cowwm-cpanel") != null && document.getElementById("cowwm-cpanel") != undefined)
+                    {
+                        var cpanel = document.getElementById("cowwm-cpanel");
+                        document.body.removeChild(cpanel);
+                    }
+                    return false;
+                }
                 setTimeout(function ()
                 {
                     wonder.core.init()
@@ -538,7 +537,7 @@ var wonder =
         {
             if (uid !== undefined)
             {
-                console.log("Clearing Database for User: " + wonder.core.uname);
+                wonder.utils.logger("Clearing Database for User: " + wonder.core.uname, "info");
                 GM_deleteValue("runtime.completed.bonus." + uid);
                 GM_deleteValue("runtime.completed.marvels." + uid);
                 wonder.reports.totals(uid);
@@ -555,7 +554,7 @@ var wonder =
             }
             if (now - lastCheck > upgradeInterval)
             {
-                console.log("Allowed to check for Upgrade");
+                wonder.utils.logger("Checking for Updates", "info")
                 GM_xmlhttpRequest(
                 {
                     method: 'GET',
@@ -564,14 +563,14 @@ var wonder =
                     {
                         var remoteVer = response.responseText.match(/version = \"([0-9]\.[0-9] [A-Za-z]+)/)[1].replace(/Alpha|Beta|Release/, "");
                         //var remoteVer = 0.9;
-                        console.log("Remote Version: " + remoteVer);
+                        wonder.utils.logger("Running Version: " + version.replace(/Alpha|Beta|Release/, "") + " Remote Version: " + remoteVer, "debug");
                         if (remoteVer > version.replace(/Alpha|Beta|Release/, ""))
                         {
-                            console.log("New Version Detected");
+                            wonder.utils.logger("New Version Detected: " + remoteVer, "info")
                         }
                         else
                         {
-                            console.log("Running Latest Version");
+                            wonder.utils.logger("No Updates Found", "info");
                         }
                     }
                 });
@@ -663,6 +662,10 @@ var wonder =
                         var dataft = stories[i].attributes[1].nodeValue;
                         var fbid = JSON.parse(dataft)['fbid'];
                         var likeLink = stories[i].getElementsByClassName('like_link');
+                        if (likeLink[0] === undefined)
+                        {
+                            likeLink === null;
+                        }
                         var links = stories[i].getElementsByTagName('a')
                         var actorName = links[2].text;
                         lcount.push(fbid)
@@ -758,12 +761,12 @@ var wonder =
                         var url = mlinks[y].url;
                         var id = mlinks[y].id;
                         var like = mlinks[y].like_link;
-                        wonder.utils.logger("Attempting to Build " + mlinks[y].type + " for " + mlinks[y].actor, "info");
+                        wonder.utils.logger("Attempting to Build " + mlinks[y].type + " for " + mlinks[y].actor, "debug");
                         wonder.marvels.collect(id, url);
                         // Like item to mark to other user we helped out
                         if (wonder.opts.likemarvel === true)
                         {
-                            if (like.title == "Like this item")
+                            if (like !== undefined && like.title == "Like this item" && like !== null)
                             {
                                 wonder.utils.logger("Marking Marvel (" + key + ") Assisted with 'Like'", "debug");
                                 like.click();
@@ -779,10 +782,12 @@ var wonder =
                     }
                     else
                     {
-                        mDupeCount++;
                         wonder.utils.logger("Duplicate Marvel Request Found in Collection - Skipping", "warn");
+                        mDupeCount++;
+                        continue;
                     }
                 }
+                // Process Bonuses
                 for (var z = 0; blinks.length > z; z++)
                 {
                     var key = blinks[z].uid + blinks[z].base.split("/")[7] + blinks[z].base.split("/")[8];
@@ -790,20 +795,20 @@ var wonder =
                     var id = blinks[z].id;
                     var like = blinks[z].like_link;
                     var bCompleted = wonder.utils.csv2Array(wonder.opts.get("runtime.completed.bonus." + uid));
-                    wonder.utils.logger("Collecting Bonus from " + blinks[z].actor, "info");
-                    wonder.bonus.collect(id, bonusURL);
+                    wonder.utils.logger("Collecting Bonus from " + blinks[z].actor, "debug");
+					wonder.bonus.collect(id, bonusURL);
                     if (wonder.opts.likebonus === true)
                     {
-                        if (like.title == "Like this item")
+						if (like !== undefined && like.title == "Like this item" && like !== null)
                         {
-                            wonder.utils.logger("Marking Bonus (" + key + ") Assisted with 'Like'", "debug");
+							wonder.utils.logger("Marking Bonus (" + key + ") Assisted with 'Like'", "debug");
                             like.click();
                         }
                     }
                     if (wonder.opts.dimcompleted === true)
                     {
-                        wonder.utils.fade(blinks[z].sid, "out", "fast");
-                    }
+						wonder.utils.fade(blinks[z].sid, "out", "fast");
+					}                  
                     wonder.utils.logger("Storing Bonus Data " + key, "debug");
                     bCompleted.push(key);
                     wonder.opts.set("runtime.completed.bonus." + uid, bCompleted.toString());;
@@ -836,70 +841,69 @@ var wonder =
                 {
                     bDesc = "<b>Bonuses</b> " + "Skipped: " + bDupeCount + newLine;
                 }
-                var desc = indent + "<b>Process Summary</b> (" + lcount.length + " Items)" + newLine + mDesc + bDesc + "<b>Visits</b> " + tlinks.length + " <b>Your Posts</b>: " + myPosts + "<br><br>";
-                $("cowwm-summary").innerHTML = desc;
+                var desc = indent + "<b>Processing</b> (" + lcount.length + " Items)" + newLine + mDesc + bDesc + "<b>Visits</b> " + tlinks.length + " <b>Your Posts</b>: " + myPosts + "<br><br>";
+				$("cowwm-summary").innerHTML = desc;
                 wonder.reports.totals(uid);
-                // Ugly Cleanup of Flash Loaded Iframes (Working on a better method)
-                if (mProcd > 0)
-                {
-                    wonder.utils.logger("Running Ugly Clean up in 30", "debug");
-                    setTimeout(wonder.actions.cleanup, 30000);
-                }
+                wonder.actions.updatePanel('', "Idle");
             }
             else
             {
-                wonder.utils.logger("No " + gameTitle + " Posts Found", "warn")
+                wonder.utils.logger("No " + gameTitle + " Posts Found", "info")
                 wonder.actions.updatePanel('');
             }
         },
-        cleanup: function (el, intId)
-        {
-            try
-            {
-                var cp = document.getElementById("cowwm-cpanel")
-                var iframes = cp.getElementsByTagName("iframe")
-                if (iframes.length > 0)
-                {
-                    wonder.utils.logger("Running Dirty Cleanup", "warn");
-                }
-                while (iframes.length > 0)
-                {
-                    for (var i = 0; iframes.length > i; i++)
-                    {
-                        wonder.utils.logger("Removing Stale Marvel Assist Frame " + iframes[i].id, "info");
-                        $("cowwm-cpanel").removeChild(iframes[i]);
-                    }
-                }
-                var totals = $("cowwm-summary").innerHTML
-                wonder.actions.updatePanel(totals, 'Idle');
-            }
-            catch (e)
-            {
-                console.log("%s", e);
-            }
-        }
     },
     // End wonder.actions
     // Start wonder.marvels
     marvels: {
         collect: function (id, url)
         {
-            getDOC(url, function (resp, url)
+            wonder.utils.getExternalResource(url, function (resp, url)
             {
-                var nextURL = resp.getElementsByTagName('iframe')[0].src;
-                var oURL = url.match(/(.*)\?(.*)/);
-                var tFrame = document.getElementsByTagName('iframe')[0].src;
-                var tURL = nextURL.match(/(.*)\?/)
-                var query = nextURL.match(/(.*)\&(fb_sig_in_iframe=.*)/);
-                var finalURL = tURL[1] + "/?" + oURL[2] + "&" + query[2];
-                var iframe = document.createElement("IFRAME");
-                iframe.style.position = "absolute";
-                iframe.style.width = "1px";
-                iframe.style.height = "1px";
-                iframe.name = 'collector-' + id;
-                iframe.id = id;
-                iframe.src = finalURL;
-                $("cowwm-cpanel").appendChild(iframe);
+                var nextUrl = resp.getElementById('app114335335255741_iframe_canvas').src;
+                //console.log("Final Marvel URL: " + nextUrl);
+                wonder.utils.getExternalResource(nextUrl, function (doc)
+                {
+                    var msg = doc.getElementsByClassName("msgs")[0].innerHTML;
+                    //console.log(msg);
+                    if (msg.search("city to see it in all its glory") !== -1)
+                    {
+                        wonder.utils.logger("Failed - Completed already", "debug");
+                        return false;
+                    }
+                    else if (msg.search("You've already helped") !== -1)
+                    {
+                        wonder.utils.logger("Failed - Already Helped", "debug")
+                        return false;
+                    }
+                    else if (msg.search(/[0-9]{1,} Coins/) !== -1)
+                    {
+                        wonder.utils.logger("Successfully Helped Build Marvel", "debug");
+                        var collected = wonder.opts.get("reports." + wonder.core.uid + ".silver");
+                        (collected !== undefined && collected !== null) ? collected = parseInt(collected) : collected = 0;
+                        var reward = parseInt(msg.match(/([0-9]{1,}) Coins/)[1]);
+                        var total = (collected + reward);
+                        wonder.utils.logger("Collected: " + reward + " Total Collected: " + collected + " New Total: " + total, "debug");
+                        wonder.opts.set("reports." + wonder.core.uid + ".silver", total);
+                        return true;
+                    }
+                    else if (msg.search("You helped build the") !== -1)
+                    {
+                        wonder.utils.logger("Successfully Helped Build Marvel", "debug");
+                        var collected = wonder.opts.get("reports." + wonder.core.uid + ".silver");
+                        (collected !== undefined && collected !== null) ? collected = parseInt(collected) : collected = 0;
+                        var reward = parseInt(msg.match(/([0-9]{1,}) Coins/)[1]);
+                        var total = (collected + reward);
+                        wonder.utils.logger("Collected: " + reward + " Total Collected: " + collected + " New Total: " + total, "debug");
+                        wonder.opts.set("reports." + wonder.core.uid + ".silver", total);
+                        return true;
+                    }
+                    else if (msg.search("Unable to Complete Request") !== -1)
+                    {
+                        wonder.utils.logger("Error - Server Error Detected", "debug");
+                        return false;
+                    }
+                });
             });
         },
     },
@@ -908,56 +912,31 @@ var wonder =
         {
             wonder.utils.getExternalResource(url, function (doc)
             {
-                var tFrame = doc.getElementsByTagName('iframe');
-                var query = tFrame[0].src.match(/(.*)\&(fb_sig_in_iframe=.*)/);
-                var appendID = tFrame[0].src.match(/(bapiTicketId=)(.*)(\&ref=)/);
-                var uri = tFrame[0].src.match(/(.*)\?/)
-                if (appendID != null && uri != null)
+                var nextUrl = doc.getElementById('app114335335255741_iframe_canvas').src;
+                //console.log("Bonus Helper URL: " + nextUrl);
+                wonder.utils.getExternalResource(nextUrl, function (result)
                 {
-                    var newURL = uri[1] + "/" + appendID[2]
-                    //console.log("Append: " + appendID[2] + " URI: " + uri[1]); 
-                    newURL = newURL + "/?" + query[2];
-                    newURL = newURL.replace("/bonusableFeed/", "/bonusableFeedHelper/")
-                    //console.log("Bonus Helper URL: " + newURL)
-                    wonder.utils.getExternalResource(newURL, function (result)
+                    var msg = result.getElementsByClassName("msgs")[0].innerHTML;
+                    if (msg.search("You already collected this bonus") !== -1)
                     {
-                        //console.log(result);
-                        wonder.utils.logger("Done Collecting Bonus " + key, "debug");
-                    });
-                }
+                        wonder.utils.logger("Already Collected this Bonus", "debug");
+                        return false;
+                    }
+                    else if (msg.search(/[0-9]{1,} Coins/) !== -1)
+                    {
+                        var collected = wonder.opts.get("reports." + wonder.core.uid + ".silver");
+                        (collected !== undefined && collected !== null) ? collected = parseInt(collected) : collected = 0;
+                        var reward = parseInt(msg.match(/([0-9]{1,}) Coins/)[1]);
+                        var total = (collected + reward);
+                        wonder.utils.logger("Collected: " + reward + " Total Collected: " + collected + " New Total: " + total, "debug");
+                        wonder.opts.set("reports." + wonder.core.uid + ".silver", total);
+						wonder.reports.totals(wonder.core.uid);
+                        return true;
+                    }
+                });
             });
         },
     },
-    worker: {
-        create: {
-        },
-        status: function (worker)
-        {
-            console.log("Checking worker status: " + worker);
-            if (wonder.opts.get(worker) !== undefined)
-            {
-                var result = wonder.opts.get(worker)
-                return result;
-            }
-        },
-        add: {
-        },
-        del: function (worker)
-        {
-            var ifrm = worker.split(".")[2];
-            var id = ifrm.split("-")[1];
-            var el = document.getElementById(id)
-            wonder.utils.logger("Checking for IFrame: " + ifrm, "debug");
-            if (el.length !== -1)
-            {
-                wonder.utils.logger("Removing Collector Frame: " + id, "debug");
-                $("cowwm-cpanel").removeChild(el);
-            }
-            wonder.utils.logger("Removing Worker: " + ifrm, "info");
-            wonder.opts.del(worker);
-        },
-    },
-    // End wonder.marvels
     reports: {
         totals: function (uid)
         {
@@ -967,10 +946,10 @@ var wonder =
             }
             var mCompleted = wonder.utils.csv2Array(wonder.opts.get('runtime.completed.marvels.' + uid));
             var bCompleted = wonder.utils.csv2Array(wonder.opts.get('runtime.completed.bonus.' + uid));
-            var silver = (mCompleted.length * 200) + (bCompleted.length * 500);
+            var silver = wonder.opts.get('reports.' + uid + '.silver');
             $("cowwm-totals-marvels").innerHTML = mCompleted.length;
             $("cowwm-totals-bonus").innerHTML = bCompleted.length;
-            $("cowwm-totals-silver").innerHTML = wonder.utils.str2Currency("~ $" + silver);
+            $("cowwm-totals-silver").innerHTML = wonder.utils.str2Currency("$" + silver);
         }
     }
 } // End Wonder
@@ -989,7 +968,7 @@ if (wonder.core.init() === true)
         {
             setInterval(wonder.actions.expand, 1000);
         }
-	//console.clear();
+        //console.clear();
 	wonder.utils.addGlobalStyle(
 
 		    '#collectBtn {' + 
@@ -1102,86 +1081,10 @@ if (wonder.core.init() === true)
 				'  float: left;' +
 				'  padding-left: 10px;}'
 			);
-			wonder.actions.updatePanel("","Idle");	
-//MarvelTest("12345","http://socialciv-fb-web-active-vip.playdom.com/socialciv/fb/newsfeed/helpMarvelBuild/4812571/350953/102301139?ref_id=1010095&send_timestamp=1284327607&track=newsfeed-marvelRequest-Luxor%20Temple-0&ref=nf&fb_sig_in_iframe=1&fb_sig_base_domain=socialciv-fb-web-active-vip.playdom.com&fb_sig_locale=en_US&fb_sig_in_new_facebook=1&fb_sig_time=1284329463.1942&fb_sig_added=1&fb_sig_profile_update_time=1282115230&fb_sig_expires=1284336000&fb_sig_user=100000420362870&fb_sig_session_key=2.uF1C7YELyJNRH3N4aNdF2Q__.3600.1284336000-100000420362870&fb_sig_ss=ZnlW6snNEgJLGIXsCv1POA__&fb_sig_cookie_sig=931323e540fc3f20a6c6b6dbb4c4bb59&fb_sig_country=us&fb_sig_api_key=665a04a75b148852fda41a0b3b491c77&fb_sig_app_id=114335335255741&fb_sig=adaba8e02d3217e64fd3fefd50b9a8d7");
+			wonder.actions.updatePanel("","Idle");
 			wonder.utils.logger("City of Wonder Wall Manager Loaded")
 			clearTimeout(tmout);
 			wonder.opts.upgradeCheck();
 	}, true);
 
 }
-
-function MarvelTest(id, url)
-{
-    var iframe = document.createElement("IFRAME");
-    iframe.style.position = "absolute";
-    iframe.style.width = "1px";
-    iframe.style.height = "1px";
-    iframe.id = id;
-    iframe.name = 'collector-' + id;
-    iframe.src = url;
-    $("cowwm-cpanel").appendChild(iframe);
-}
-var doc_ready = function ()
-{
-    if (("" + window.location.href).toLowerCase().indexOf("http://socialciv-fb-web-active-vip.playdom.com/socialciv/fb/newsfeed/helpmarvelbuild/") !== -1)
-    {
-        if (window.name !== "" && document.getElementById("mainBG") !== null)
-        {
-            var myName = window.name;
-            wonder.utils.logger("Checking worker " + myName + " status", "debug");
-            var msg = document.getElementById("mainBG").innerHTML
-            if (msg.search("to see this incredible wonder") !== -1)
-            {
-                wonder.utils.logger("Failed - Completed already", "warn");
-                wonder.opts.set("worker.status." + myName, "failure");
-            }
-            else if (msg.search("you have already helped") !== -1)
-            {
-                wonder.utils.logger("Failed already helped", "warn")
-                wonder.opts.set("worker.status." + myName, "failure");
-            }
-            else if (msg.search("Collect Reward") !== -1)
-            {
-                wonder.utils.logger("Success", "debug");
-                wonder.opts.set("worker.status." + myName, "success");
-				console.log(msg)
-            }
-            else if (msg.search("You helped build") !== -1)
-            {
-                wonder.utils.logger("Success", "debug")
-                wonder.opts.set("worker.status." + myName, "success");
-				console.log(msg)
-            }
-            else if (msg.search("errorTryAgain") !== -1)
-            {
-                wonder.utils.logger("Server Error Detected", "warn");
-                wonder.opts.set("worker.status." + myName, "error");
-            }
-        }
-    }
-    else if (("" + window.location.href).toLowerCase().indexOf("http://www.facebook.com/") !== -1)
-    {
-        if (document.getElementsByClassName('fbxWelcomeBoxName')[0] !== undefined)
-        {
-            var uid = document.getElementsByClassName('fbxWelcomeBoxName')[0].href.split("=")[1];
-            var ifs = $("cowwm-cpanel").getElementsByTagName("iframe");
-            (ifs.length > 0) ? wonder.actions.updatePanel($("cowwm-summary").innerHTML, 'Running') : wonder.actions.updatePanel($("cowwm-summary").innerHTML, 'Idle');
-            for (var i = 0; ifs.length > i; i++)
-            {
-                var worker = "worker.status." + ifs[i].name;
-                var result = wonder.worker.status(worker);
-                if (result)
-                {
-                    wonder.utils.logger("Collector Result: " + result, "debug");
-                    wonder.worker.del(worker);
-                }
-            }
-        }
-    }
-}
-// Start Polling for page type and take actions
-setInterval(function ()
-{
-    doc_ready()
-}, 300)
