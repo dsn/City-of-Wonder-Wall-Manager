@@ -1,5 +1,5 @@
 // City of Wonder Wall Scanner
-// version 0.8 Beta!
+// version 0.8.8 Beta!
 // 2010-08-27
 // Copyright (c) 2010, Dark Side Networks
 // Released under the GPL license
@@ -33,10 +33,18 @@
 // @exclude		  http://www.facebook.com/terms*
 // ==/UserScript==
 // CHANGELOG
+// 0.8.8B
+// Bugfix Collecting Bonuses
+// 0.8.7B
+// Bugfix Collecting Bonuses
+// 0.8.6B
+// Bugfix Detect Error Checking for Updates
+// 0.8.5B
+// Individual User Options
+// Enhaced FB Lag Detection and Reload
 // 0.8B
-// Lots of Code Refactoring based on new Landing Pages for Marvels and Bonuses
-// New Accuriate Reporting based on parsed output of collected values
-// Updated Include / Exclude List
+// Lots of Code Re-factoring based on new Landing Pages for Marvels and Bonuses
+// New Accurate Reporting based on parsed output of collected values
 // 0.7A
 // Hide Posts Already Processed Option
 // Reset User DB Option
@@ -53,11 +61,11 @@
 // Enable Multiple User Support
 // Options Enabled
 // Script Settings
-var version = "0.8 Beta";
+var version = "0.8.8 Beta";
 var debug = false; // Set to false to disable logging
 var logLevel = "info"; // set to debug, info, warn, or error to filter events
-//var upgradeInterval = 21600000; // Check for new version on load every 6 hrs
-var upgradeInterval = 120000; // Debug 2 min
+var upgradeInterval = 21600000; // Check for new version on load every 6 hrs
+//var upgradeInterval = 120000; // Debug 2 min
 // Script Variables
 var applicationID = "114335335255741";
 var gameTitle = "City of Wonder";
@@ -127,57 +135,58 @@ var wonder =
             document.body.style.paddingBottom = "4em";
             document.body.appendChild(div);
             wonder.utils.logger("Loading Control Panel", "info");
-            var autoExpand = wonder.opts.get("opts.autoexpand")
-            var likeMarvel = wonder.opts.get("opts.likemarvel")
-            var likeBonus = wonder.opts.get("opts.likebonus")
-            var dimCompleted = wonder.opts.get("opts.dimcompleted");
+            var autoExpand = wonder.opts.get("opts." + wonder.core.uid + ".autoexpand")
+            var likeMarvel = wonder.opts.get("opts." + wonder.core.uid + ".likemarvel")
+            var likeBonus = wonder.opts.get("opts." + wonder.core.uid + ".likebonus")
+            var dimCompleted = wonder.opts.get("opts." + wonder.core.uid + ".dimcompleted");
             if (autoExpand === undefined) autoExpand = true;
             if (likeMarvel === undefined) likeMarvel = true;
+			if (likeBonus === undefined) likeBonus = true;
             if (dimCompleted === undefined) dimCompleted = true;
             // Load Auto Expand More Posts Option
             if (autoExpand === true)
             {
                 wonder.opts.autoexpand = true;
-                wonder.opts.set("opts.autoexpand", true);
+                wonder.opts.set("opts." + wonder.core.uid + ".autoexpand", true);
                 window.setInterval(wonder.actions.expand, 1000);
             }
             else
             {
                 wonder.opts.autoexpand = false;
-                wonder.opts.get("opts.autoexpand", false);
+                wonder.opts.get("opts." + wonder.core.uid + ".autoexpand", false);
             }
             // Load Like Marvel Assist Option
             if (likeMarvel === true)
             {
                 wonder.opts.likemarvel = true;
-                wonder.opts.set("opts.likemarvel", true);
+                wonder.opts.set("opts." + wonder.core.uid + ".likemarvel", true);
             }
             else
             {
                 wonder.opts.likemarvel = false;
-                wonder.opts.set("opts.likemarvel", false);
+                wonder.opts.set("opts." + wonder.core.uid + ".likemarvel", false);
             }
             // Load Like Bonus Collection Option
             if (likeBonus === true)
             {
                 wonder.opts.likebonus = true;
-                wonder.opts.set("opts.likebonus", true);
+                wonder.opts.set("opts." + wonder.core.uid + ".likebonus", true);
             }
             else
             {
                 wonder.opts.likebonus = false;
-                wonder.opts.set("opts.likebonus", false);
+                wonder.opts.set("opts." + wonder.core.uid + ".likebonus", false);
             }
             // Load Dim Processed Option
             if (dimCompleted === true)
             {
                 wonder.opts.dimcompleted = true;
-                wonder.opts.set("opts.dimcompleted", true);
+                wonder.opts.set("opts." + wonder.core.uid + ".dimcompleted", true);
             }
             else
             {
                 wonder.opts.dimcompleted = false;
-                wonder.opts.set("opts.dimcompleted", false);
+                wonder.opts.set("opts." + wonder.core.uid + ".dimcompleted", false);
             }
             wonder.utils.logger("------------------------------------", "debug");
             wonder.utils.logger("City of Wonder Wall Manager Settings", "debug")
@@ -192,7 +201,6 @@ var wonder =
             wonder.utils.logger("-----------------------------", "debug");
             wonder.reports.totals(wonder.core.uid);
             return true;
-            //document.getElementById('collectBtn').addEventListener("click", wonder.getStories, true);
         },
         uid: { // Store Running User UID
         },
@@ -299,7 +307,7 @@ var wonder =
                 wonder.utils.logger("Warning next run will collect items that have already been collected", "warn")
                 for (var i = 0, key = null; key = keys[i]; i++)
                 {
-                    if (key.match(/runtime.completed/) || key.match(/worker.status/))
+                    if (key.match(/runtime/) || key.match(/reports/))
                     {
                         wonder.utils.logger("Removing Completed Data: " + key, "info");
                         wonder.opts.del(key);
@@ -405,10 +413,10 @@ var wonder =
         {
             var cpanel = document.getElementById('cowwm-cpanel');
             var oPanel = document.getElementById('cowwm-config');
-            var autoExpandEnabled = wonder.opts.get("opts.autoexpand");
-            var likeMarvel = wonder.opts.get("opts.likemarvel");
-            var likeBonus = wonder.opts.get("opts.likebonus");
-            var dimCompleted = wonder.opts.get("opts.dimcompleted");
+            var autoExpandEnabled = wonder.opts.get("opts." + wonder.core.uid + ".autoexpand");
+            var likeMarvel = wonder.opts.get("opts." + wonder.core.uid + ".likemarvel");
+            var likeBonus = wonder.opts.get("opts." + wonder.core.uid + ".likebonus");
+            var dimCompleted = wonder.opts.get("opts." + wonder.core.uid + ".dimcompleted");
             // Check and Set Auto Expand Option
             if (autoExpandEnabled === undefined)
             {
@@ -483,19 +491,19 @@ var wonder =
                 $('cowwm-opts-close').addEventListener("click", wonder.opts.config, true);
                 $('autoExpand').addEventListener('change', function ()
                 {
-                    wonder.opts.set('opts.autoexpand', document.getElementById('autoExpand').checked);
+                    wonder.opts.set('opts.' + wonder.core.uid + '.autoexpand', document.getElementById('autoExpand').checked);
                 }, true);
                 $('likeMarvel').addEventListener('change', function ()
                 {
-                    wonder.opts.set('opts.likemarvel', document.getElementById('likeMarvel').checked);
+                    wonder.opts.set('opts.' + wonder.core.uid + '.likemarvel', document.getElementById('likeMarvel').checked);
                 }, true);
                 $('likeBonus').addEventListener('change', function ()
                 {
-                    wonder.opts.set('opts.likebonus', document.getElementById('likeBonus').checked);
+                    wonder.opts.set('opts.' + wonder.core.uid + '.likebonus', document.getElementById('likeBonus').checked);
                 }, true);
                 $('dimCollected').addEventListener('change', function ()
                 {
-                    wonder.opts.set('opts.dimcompleted', document.getElementById('dimCollected').checked);
+                    wonder.opts.set('opts.' + wonder.core.uid + '.dimcompleted', document.getElementById('dimCollected').checked);
                 }, true);
                 $("cowwm-resetdb").addEventListener("click", function ()
                 {
@@ -538,23 +546,21 @@ var wonder =
         {
             return GM_deleteValue(key);
         },
-        wipeUserData: function (uid)
+        wipeUserData: function ()
         {
-            if (uid !== undefined)
-            {
                 wonder.utils.logger("Clearing Database for User: " + wonder.core.uname, "info");
-                GM_deleteValue("runtime.completed.bonus." + uid);
-                GM_deleteValue("runtime.completed.marvels." + uid);
-                wonder.reports.totals(uid);
-            }
+                GM_deleteValue("runtime." + wonder.core.uid + ".completed.bonus");
+                GM_deleteValue("runtime." + wonder.core.uid + ".completed.marvels");
+				wonder.opts.del("reports." + wonder.core.uid + ".silver");
+                wonder.reports.totals(wonder.core.uid);
         },
         upgradeCheck: function ()
         {
-            var lastCheck = wonder.opts.get('opts.lastcheck');
+            var lastCheck = wonder.opts.get('opts.' + wonder.core.uid + '.lastcheck');
             var now = new Date.now();
             if (lastCheck === undefined)
             {
-                wonder.opts.set("opts.lastcheck", now.toString());
+                wonder.opts.set("opts." + wonder.core.uid + ".lastcheck", now.toString());
                 lastCheck = now;
             }
             if (now - lastCheck > upgradeInterval)
@@ -563,27 +569,33 @@ var wonder =
                 GM_xmlhttpRequest(
                 {
                     method: 'GET',
-                    url: "http://github.com/dsn/City-of-Wonder-Wall-Manager/raw/master/cow-wm.user.js",
+                    url: "http://userscripts.org/scripts/source/85444.user.js",
                     onload: function (response)
                     {
-                        var remoteVer = response.responseText.match(/version = \"([0-9]\.[0-9] [A-Za-z]+)/)[1].replace(/Alpha|Beta|Release/, "");
-                        //var remoteVer = 0.9;
+                        
+						if(response.responseText.match(/version = \"([0-9].* [A-Za-z]+)/) === null) {
+							console.log("Error checking for update");
+							return false; }
+						var remoteVer = response.responseText.match(/version = \"([0-9].* [A-Za-z]+)/)[1].replace(/Alpha|Beta|Release/, "");
+						
+						//var remoteVer = 0.9;
                         //wonder.utils.logger("Running Version: " + version.replace(/Alpha|Beta|Release/, "") + " Remote Version: " + remoteVer, "debug");
-                        if (remoteVer > version.replace(/Alpha|Beta|Release/, ""))
-                        {
+	                    if (remoteVer > version.replace(/Alpha|Beta|Release/, ""))
+		                {
                             console.info("New Version Detected: " + remoteVer)
 							var res = confirm("A New Version of the City of Wonder Wall Manager is Available\r\nWould you like to upgrade?");
 							if(res === true) {
-								location.href = "http://github.com/dsn/City-of-Wonder-Wall-Manager/raw/master/cow-wm.user.js";
+								location.href = "http://userscripts.org/scripts/source/85444.user.js";
 							}
-                        }
+			            }
                         else
-                        {
-                            wonder.utils.logger("No Updates Found", "info");
-                        }
-                    }
+	                    {
+		                   console.log("No Updates Found", "info");
+			            }
+					}
                 });
             }
+			wonder.opts.set('opts.' + wonder.core.uid + '.lastcheck', now.toString());
         },
     },
     // End wonder.opts
@@ -663,6 +675,7 @@ var wonder =
             var stories = document.getElementsByClassName('aid_' + applicationID);
             if (stories !== null && stories.length > 0)
             {
+				wonder.actions.updatePanel('Collecting Posts', 'Running');
                 for (var i = 0; i < stories.length; i++)
                 {
                     var appid = stories[i].innerHTML.match(/(application\.php\?id=|app_id=)([0-9]{1,})/);
@@ -686,7 +699,7 @@ var wonder =
                                 if (links[x].text.match(marvelRegex))
                                 {
                                     k = uid + links[x].href.split('?')[0].split("/")[7] + links[x].href.split('?')[0].split("/")[8];
-                                    if (wonder.utils.csv2Array(wonder.opts.get("runtime.completed.marvels." + uid)).indexOf(k) !== -1)
+                                    if (wonder.utils.csv2Array(wonder.opts.get("runtime." + wonder.core.uid + ".completed.marvels." + uid)).indexOf(k) !== -1)
                                     {
                                         if (wonder.opts.dimcompleted === true)
                                         {
@@ -714,7 +727,7 @@ var wonder =
                                 {
                                     b = links[x].href.split('?')[0];
                                     k = uid + b.split("/")[7] + b.split("/")[8];
-                                    if (wonder.utils.csv2Array(wonder.opts.get("runtime.completed.bonus." + uid)).indexOf(k) !== -1)
+                                    if (wonder.utils.csv2Array(wonder.opts.get("runtime." + wonder.core.uid + ".completed.bonus." + uid)).indexOf(k) !== -1)
                                     {
                                         if (wonder.opts.dimcompleted === true)
                                         {
@@ -758,13 +771,14 @@ var wonder =
                         }
                     }
                 }
+				wonder.actions.updatePanel('Processing: ' + lcount.length + ' Items<br><b>Marvels:</b> ' + mlinks.length + '<br/><b>Bonuses:</b> ' + blinks.length, 'Running');
                 // Done Collecting Data Start Process Links
                 wonder.utils.logger("Found " + lcount.length + " Posts - Processing (" + mlinks.length + " Marvels, " + blinks.length + " Bonuses, and " + tlinks.length + " Embassy / Visit Links)", "info");
                 // Process Marvels
                 for (y = 0; mlinks.length > y; y++)
                 {
                     var key = mlinks[y].uid + mlinks[y].base.split("/")[7] + mlinks[y].base.split("/")[8];
-                    var mCompleted = wonder.utils.csv2Array(wonder.opts.get("runtime.completed.marvels." + uid));
+                    var mCompleted = wonder.utils.csv2Array(wonder.opts.get("runtime." + wonder.core.uid + ".completed.marvels." + uid));
                     if (mCompleted.indexOf(key) === -1)
                     {
                         var url = mlinks[y].url;
@@ -787,7 +801,7 @@ var wonder =
                         }
                         wonder.utils.logger("Storing Marvel Data: " + key, "debug");
                         mCompleted.push(key);
-                        wonder.opts.set("runtime.completed.marvels." + uid, mCompleted.toString());
+                        wonder.opts.set("runtime." + wonder.core.uid + ".completed.marvels." + uid, mCompleted.toString());
                     }
                     else
                     {
@@ -803,7 +817,7 @@ var wonder =
                     var bonusURL = blinks[z].url;
                     var id = blinks[z].id;
                     var like = blinks[z].like_link;
-                    var bCompleted = wonder.utils.csv2Array(wonder.opts.get("runtime.completed.bonus." + uid));
+                    var bCompleted = wonder.utils.csv2Array(wonder.opts.get("runtime." + wonder.core.uid + ".completed.bonus." + uid));
                     wonder.utils.logger("Collecting Bonus from " + blinks[z].actor, "debug");
 					wonder.bonus.collect(id, bonusURL);
                     if (wonder.opts.likebonus === true)
@@ -820,7 +834,7 @@ var wonder =
 					}                  
                     wonder.utils.logger("Storing Bonus Data " + key, "debug");
                     bCompleted.push(key);
-                    wonder.opts.set("runtime.completed.bonus." + uid, bCompleted.toString());;
+                    wonder.opts.set("runtime." + wonder.core.uid + ".completed.bonus." + uid, bCompleted.toString());;
                 }
                 var mProcd = mlinks.length;
                 var bProcd = blinks.length;
@@ -850,7 +864,7 @@ var wonder =
                 {
                     bDesc = "<b>Bonuses</b> " + "Skipped: " + bDupeCount + newLine;
                 }
-                var desc = indent + "<b>Processing</b> (" + lcount.length + " Items)" + newLine + mDesc + bDesc + "<b>Visits</b> " + tlinks.length + " <b>Your Posts</b>: " + myPosts + "<br><br>";
+                var desc = indent + "<b>Processed</b> (" + lcount.length + " Items)" + newLine + mDesc + bDesc + "<b>Visits</b> " + tlinks.length + " <b>Your Posts</b>: " + myPosts + "<br><br>";
 				$("cowwm-summary").innerHTML = desc;
                 wonder.reports.totals(uid);
                 wonder.actions.updatePanel('', "Idle");
@@ -929,7 +943,6 @@ var wonder =
                     if (msg.search("You already collected this bonus") !== -1)
                     {
                         wonder.utils.logger("Already Collected this Bonus", "debug");
-                        return false;
                     }
                     else if (msg.search(/[0-9]{1,} Coins/) !== -1)
                     {
@@ -939,8 +952,12 @@ var wonder =
                         var total = (collected + reward);
                         wonder.utils.logger("Collected: " + reward + " Total Collected: " + collected + " New Total: " + total, "debug");
                         wonder.opts.set("reports." + wonder.core.uid + ".silver", total);
+						var collectBtn = result.getElementsByClassName("msgs")[0].getElementsByTagName("a");
+						var finalURL = collectBtn[0].attributes[1].nodeValue.match(/\'(.*)\'/)[1];
 						wonder.reports.totals(wonder.core.uid);
-                        return true;
+						wonder.utils.getExternalResource(finalURL, function (response) {
+							wonder.utils.logger("Collected Bonus", "debug");
+						});
                     }
                 });
             });
@@ -953,9 +970,10 @@ var wonder =
             {
                 return false;
             }
-            var mCompleted = wonder.utils.csv2Array(wonder.opts.get('runtime.completed.marvels.' + uid));
-            var bCompleted = wonder.utils.csv2Array(wonder.opts.get('runtime.completed.bonus.' + uid));
+            var mCompleted = wonder.utils.csv2Array(wonder.opts.get('runtime.' + wonder.core.uid + '.completed.marvels.' + uid));
+            var bCompleted = wonder.utils.csv2Array(wonder.opts.get('runtime.' + wonder.core.uid + '.completed.bonus.' + uid));
             var silver = wonder.opts.get('reports.' + uid + '.silver');
+			if(silver === undefined) { silver = 0; };
             $("cowwm-totals-marvels").innerHTML = mCompleted.length;
             $("cowwm-totals-bonus").innerHTML = bCompleted.length;
             $("cowwm-totals-silver").innerHTML = wonder.utils.str2Currency("$" + silver);
@@ -968,12 +986,12 @@ if (wonder.core.init() === true)
     {
         wonder.utils.logger("Facebook Loading Timeout - Reloading", "warn");
         top.location = top.location;
-    }, 10000);
+    }, 30000);
     wonder.utils.logger("City of Wonder Wall Manager Init Successful", "info");
     wonder.utils.logger("Waiting for Facebook to Complete Loading", "info");
     window.addEventListener("load", function ()
     {
-        if (wonder.opts.get("opts.autoexpand") === true)
+        if (wonder.opts.get("opts." + wonder.core.uid + ".autoexpand") === true)
         {
             setInterval(wonder.actions.expand, 1000);
         }
