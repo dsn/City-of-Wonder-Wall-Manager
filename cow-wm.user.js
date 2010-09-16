@@ -569,7 +569,7 @@ var wonder =
                 GM_xmlhttpRequest(
                 {
                     method: 'GET',
-                    url: "http://userscripts.org/scripts/source/85444.user.js",
+                    url: "http://github.com/dsn/City-of-Wonder-Wall-Manager/raw/master/cow-wm.user.js",
                     onload: function (response)
                     {
                         
