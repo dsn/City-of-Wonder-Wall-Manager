@@ -1,6 +1,6 @@
 // City of Wonder Wall Scanner
-// version 1.0
-// 2010-08-27
+// version 1.1
+// 2010-11-04
 // Copyright (c) 2010, Dark Side Networks
 // Released under the GPL license
 // http://www.gnu.org/copyleft/gpl.html
@@ -26,6 +26,8 @@
 // @require		  http://userscripts.org/scripts/source/73008.user.js
 // ==/UserScript==
 // CHANGELOG
+// 1.1
+// Bugfix update checking
 // 1.0
 // Bugfix New Marvel St. Basil's Cathedral
 // See http://userscripts.org/scripts/show/85444 for full details
@@ -61,9 +63,9 @@
 // Enable Multiple User Support
 // Options Enabled
 // Script Settings
-var version = "1.0";
+var version = "1.1";
 var debug = false; // Set to false to disable logging
-var logLevel = "warn"; // set to debug, info, warn, or error to filter events
+var logLevel = "debug"; // set to debug, info, warn, or error to filter events
 var upgradeInterval = 21600000; // Check for new version on load every 6 hrs
 //var upgradeInterval = 1; // Debug
 // Script Variables
@@ -478,10 +480,10 @@ var wonder = {
       wonder.opts.del("reports." + wonder.core.uid + ".silver");
       wonder.reports.totals(wonder.core.uid);
     },
-    upgradeCheck: function (type) {
+    upgradeCheck: function (opt) {
       var lastCheck = wonder.opts.get('opts.' + wonder.core.uid + '.lastcheck');
       var now = new Date.now();
-      if (type === "forced") {
+      if (opt === "forced") {
         lastCheck = 0;
       };
       if (lastCheck === undefined) {
@@ -494,16 +496,14 @@ var wonder = {
           method: 'GET',
           url: "http://github.com/dsn/City-of-Wonder-Wall-Manager/raw/master/cow-wm.user.js",
           onload: function (response) {
-
-            if (response.responseText.match(/version = \"([0-9].* [A-Za-z]+)/) === null) {
-              wonder.utils.logger("Error checking for update", "info");
+            if (response.responseText.search("version") === -1) {
+              wonder.utils.logger("Error checking for update: " + response.responseText, "info");
               return false;
             }
-            var remoteVer = response.responseText.match(/version = \"([0-9].* [A-Za-z]+)/)[1].replace(/Alpha|Beta|Release/, "");
-
+            var remoteVer = response.responseText.match(/version = \"\d+\.\d+\"/g)[0].split('=')[1].replace(" ", "").replace('"','').replace('"','');
             if (remoteVer > version.replace(/Alpha|Beta|Release/, "")) {
               wonder.utils.logger("New Version Detected: " + remoteVer, "debug")
-              document.getElementById("cpMessage").innerHTML = "<strong>City of Wonder Wall Manager<br/>New Version Available</strong><br/><br/><h4 style='background-color: darkred;'>Your Version: " + version + "</h4><h4 style='background-color: darkgreen; -moz-border-radius: 0px 0px 5px 5px;'>New Version: " + response.responseText.match(/version = \"([0-9].* [A-Za-z]+)/)[1] + "</h4><br><a href='http://userscripts.org/scripts/show/85444' target='_blank' style='color: white;'><b>Read Details</b></a> | <a href='http://userscripts.org/scripts/source/85444.user.js' target='_blank' style='color: white;'><b>Update</b></a>";
+              document.getElementById("cpMessage").innerHTML = "<strong>City of Wonder Wall Manager<br/>New Version Available</strong><br/><br/><h4 style='background-color: darkred;'>Your Version: " + version + "</h4><h4 style='background-color: darkgreen; -moz-border-radius: 0px 0px 5px 5px;'>New Version: " + remoteVer + "</h4><br><a href='http://userscripts.org/scripts/show/85444' target='_blank' style='color: white;'><b>Read Details</b></a> | <a href='http://userscripts.org/scripts/source/85444.user.js' target='_blank' style='color: white;'><b>Update</b></a>";
               document.getElementById("cpMessage").style.visibility = "visible";
               document.getElementById("cpMessage").addEventListener("click", function () {
                 document.getElementById("cpMessage").style.visibility = "hidden";
